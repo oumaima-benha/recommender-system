@@ -81,6 +81,41 @@ def hybrid_recommendation(user_id, top_n=10):
     
     return list(hybrid_recs)[:top_n]
 
+def hybriid_recommendation(user_id, top_n=10):
+    
+    # Step 1: CF recommendations (movie_idx)
+    cf_recs = recommend_items(user_id, user_item_matrix, item_similarity_df, top_n=top_n)
+    
+    # Convert CF movie_idx → movie_id
+    cf_movie_ids = []
+    
+    for movie_idx in cf_recs:
+        movie_id = movie_idx_to_id.get(str(movie_idx))
+        if movie_id:
+            cf_movie_ids.append(movie_id)
+    
+    # Step 2: enrich with content-based
+    hybrid_movie_ids = set(cf_movie_ids)
+    
+    for movie_id in cf_movie_ids[:3]:  # top 3
+        
+        # get title
+        title = movie_id_to_title.get(movie_id)
+        if not title:
+            continue
+        
+        # get similar movies (titles)
+        similar_titles = recommend_similar_movies(title, cosine_sim, movies, top_n=3)
+        
+        # convert titles → movie_id
+        for t in similar_titles:
+            match = movies[movies["title"] == t]
+            if not match.empty:
+                sim_movie_id = match["movie_id"].values[0]
+                hybrid_movie_ids.add(sim_movie_id)
+    
+    return list(hybrid_movie_ids)[:top_n]
+
 # Example usage
 print(hybrid_recommendation(user_id=15, top_n=10))
 
